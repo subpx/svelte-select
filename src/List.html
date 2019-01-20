@@ -8,8 +8,8 @@
   </div>
   {/if}
 
-  <div on:mouseover="handleHover(i)" on:click="handleClick(item, i, event)"
-       class="listItem {itemClasses(hoverItemIndex, item, i, items, selectedItem)}">
+  <div on:mouseover="handleHover(item, i)" on:click="handleClick(item, i, event)"
+       class="listItem {itemClasses(hoverItemIndex, item, i, items, selectedItem, isOptionDisabled)}">
     <svelte:component this="{Item}" {item} {getOptionLabel}/>
   </div>
   {:else}
@@ -66,6 +66,10 @@
     color: #fff;
   }
 
+  .listItem.disabled {
+    color: #C1C6CC;
+  }
+
   .empty {
     text-align: center;
     padding: 20px 0;
@@ -83,15 +87,14 @@
         items: [],
         Item,
         selectedItem: undefined,
-        getOptionLabel: (option) => option.label
+        getOptionLabel: (option) => option.label,
+        isOptionDisabled: () => false
       }
     },
     onupdate({changed, current}) {
       if (changed.items && current.items.length > 0) {
         if (!current.items[current.hoverItemIndex]) {
-          this.set({
-            hoverItemIndex: current.items.length - 1
-          });
+          this.updateHoverItem(-1, current.items.length);
         }
       }
       if (changed.activeItemIndex && current.activeItemIndex > -1) {
@@ -112,24 +115,32 @@
       }
     },
     helpers: {
-      itemClasses(hoverItemIndex, item, itemIndex, items, selectedItem) {
-        return `${selectedItem && (selectedItem.value === item.value) ? 'active ' : ''}${hoverItemIndex === itemIndex || items.length === 1 ? 'hover' : ''}`;
+      itemClasses(hoverItemIndex, item, itemIndex, items, selectedItem, isOptionDisabled) {
+        return `
+          ${selectedItem && (selectedItem.value === item.value) ? 'active ' : ''}
+          ${hoverItemIndex === itemIndex || items.length === 1 ? 'hover' : ''}
+          ${isOptionDisabled(item) ? 'disabled' : ''}
+        `;
       }
     },
     methods: {
       handleSelect(item) {
-        this.fire('itemSelected', item);
+        if(!this.get().isOptionDisabled(item)) {
+          this.fire('itemSelected', item);
+        }
       },
-      handleHover(i) {
-        this.set({hoverItemIndex: i});
+      handleHover(item, i) {
+        if(!this.get().isOptionDisabled(item)) {
+          this.set({hoverItemIndex: i});
+        }
       },
       handleClick(item, i, event) {
         event.stopPropagation();
         this.set({activeItemIndex: i, hoverItemIndex: i});
         this.handleSelect(item);
       },
-      updateHoverItem(increment) {
-        let {items, hoverItemIndex} = this.get();
+      updateHoverItem(increment, hoverItemIndex) {
+        let {items, isOptionDisabled} = this.get();
 
         if (increment > 0 && hoverItemIndex === (items.length - 1)) {
           hoverItemIndex = 0;
@@ -141,8 +152,12 @@
           hoverItemIndex = hoverItemIndex + increment;
         }
 
-        this.set({hoverItemIndex});
-        this.scrollToActiveItem('hover');
+        if(isOptionDisabled(items[hoverItemIndex])) {
+          this.updateHoverItem(increment, hoverItemIndex);
+        } else {
+          this.set({hoverItemIndex});
+          this.scrollToActiveItem('hover');
+        }
       },
       handleKeyDown(e) {
         const {items, hoverItemIndex} = this.get();
@@ -150,11 +165,11 @@
         switch (e.key) {
           case 'ArrowDown':
             e.preventDefault();
-            this.updateHoverItem(1);
+            this.updateHoverItem(1, hoverItemIndex);
             break;
           case 'ArrowUp':
             e.preventDefault();
-            this.updateHoverItem(-1);
+            this.updateHoverItem(-1, hoverItemIndex);
             break;
           case 'Enter':
             e.preventDefault();

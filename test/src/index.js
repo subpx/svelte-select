@@ -1184,7 +1184,10 @@ test.only('should....', async (t) => {
   const select = new Select({
     target,
     data: {
-      items
+      items: itemsWithGroup,
+      isOptionDisabled: (option) => {
+        return option.group === 'Sweet';
+      }
     }
   });
 });

@@ -211,7 +211,8 @@
         getSelectionLabel: (option) => option.label,
         placeholder: 'Select...',
         groupBy: undefined,
-        groupFilter: (groups) => groups
+        groupFilter: (groups) => groups,
+        isOptionDisabled: () => false
       }
     },
     computed: {
@@ -364,8 +365,8 @@
         this.getPosition();
         this.refs.container.appendChild(target);
 
-        const {Item, getOptionLabel} = this.get();
-        const data = {Item};
+        const {Item, getOptionLabel, isOptionDisabled} = this.get();
+        const data = {Item,isOptionDisabled};
 
         if (getOptionLabel) {
           data.getOptionLabel = getOptionLabel;

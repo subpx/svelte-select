@@ -24595,26 +24595,35 @@
 	    items: [],
 	    Item,
 	    selectedItem: undefined,
-	    getOptionLabel: (option) => option.label
+	    getOptionLabel: (option) => option.label,
+	    isOptionDisabled: () => false
 	  }
 	}
-	function itemClasses(hoverItemIndex, item, itemIndex, items, selectedItem) {
-	  return `${selectedItem && (selectedItem.value === item.value) ? 'active ' : ''}${hoverItemIndex === itemIndex || items.length === 1 ? 'hover' : ''}`;
+	function itemClasses(hoverItemIndex, item, itemIndex, items, selectedItem, isOptionDisabled) {
+	  return `
+    ${selectedItem && (selectedItem.value === item.value) ? 'active ' : ''}
+    ${hoverItemIndex === itemIndex || items.length === 1 ? 'hover' : ''}
+    ${isOptionDisabled(item) ? 'disabled' : ''}
+  `;
 	}
 	var methods = {
 	  handleSelect(item) {
-	    this.fire('itemSelected', item);
+	    if(!this.get().isOptionDisabled(item)) {
+	      this.fire('itemSelected', item);
+	    }
 	  },
-	  handleHover(i) {
-	    this.set({hoverItemIndex: i});
+	  handleHover(item, i) {
+	    if(!this.get().isOptionDisabled(item)) {
+	      this.set({hoverItemIndex: i});
+	    }
 	  },
 	  handleClick(item, i, event) {
 	    event.stopPropagation();
 	    this.set({activeItemIndex: i, hoverItemIndex: i});
 	    this.handleSelect(item);
 	  },
-	  updateHoverItem(increment) {
-	    let {items, hoverItemIndex} = this.get();
+	  updateHoverItem(increment, hoverItemIndex) {
+	    let {items, isOptionDisabled} = this.get();
 
 	    if (increment > 0 && hoverItemIndex === (items.length - 1)) {
 	      hoverItemIndex = 0;
@@ -24626,8 +24635,12 @@
 	      hoverItemIndex = hoverItemIndex + increment;
 	    }
 
-	    this.set({hoverItemIndex});
-	    this.scrollToActiveItem('hover');
+	    if(isOptionDisabled(items[hoverItemIndex])) {
+	      this.updateHoverItem(increment, hoverItemIndex);
+	    } else {
+	      this.set({hoverItemIndex});
+	      this.scrollToActiveItem('hover');
+	    }
 	  },
 	  handleKeyDown(e) {
 	    const {items, hoverItemIndex} = this.get();
@@ -24635,11 +24648,11 @@
 	    switch (e.key) {
 	      case 'ArrowDown':
 	        e.preventDefault();
-	        this.updateHoverItem(1);
+	        this.updateHoverItem(1, hoverItemIndex);
 	        break;
 	      case 'ArrowUp':
 	        e.preventDefault();
-	        this.updateHoverItem(-1);
+	        this.updateHoverItem(-1, hoverItemIndex);
 	        break;
 	      case 'Enter':
 	        e.preventDefault();
@@ -24669,9 +24682,7 @@
 	function onupdate({changed, current}) {
 	  if (changed.items && current.items.length > 0) {
 	    if (!current.items[current.hoverItemIndex]) {
-	      this.set({
-	        hoverItemIndex: current.items.length - 1
-	      });
+	      this.updateHoverItem(-1, current.items.length);
 	    }
 	  }
 	  if (changed.activeItemIndex && current.activeItemIndex > -1) {
@@ -24693,8 +24704,8 @@
 	}
 	function add_css() {
 		var style = createElement("style");
-		style.id = 'svelte-1h82xdc-style';
-		style.textContent = ".listContainer.svelte-1h82xdc{box-shadow:0 2px 3px 0 rgba(44, 62, 80, 0.24);border-radius:4px;max-height:250px;overflow-y:auto;background:#fff}.listGroupTitle.svelte-1h82xdc{color:#8f8f8f;cursor:default;font-size:12px;height:40px;line-height:40px;padding:0 20px;text-overflow:ellipsis;overflow-x:hidden;white-space:nowrap;text-transform:uppercase}.listItem.svelte-1h82xdc{cursor:default;height:40px;line-height:40px;padding:0 20px;text-overflow:ellipsis;overflow-x:hidden;white-space:nowrap}.listItem.hover.svelte-1h82xdc{background:#e7f2ff}.listItem.svelte-1h82xdc:active{background:#b9daff}.listItem.svelte-1h82xdc:first-child{border-radius:4px 4px 0 0}.listItem.active.svelte-1h82xdc{background:#007aff;color:#fff}.empty.svelte-1h82xdc{text-align:center;padding:20px 0;color:#78848F}";
+		style.id = 'svelte-55e05t-style';
+		style.textContent = ".listContainer.svelte-55e05t{box-shadow:0 2px 3px 0 rgba(44, 62, 80, 0.24);border-radius:4px;max-height:250px;overflow-y:auto;background:#fff}.listGroupTitle.svelte-55e05t{color:#8f8f8f;cursor:default;font-size:12px;height:40px;line-height:40px;padding:0 20px;text-overflow:ellipsis;overflow-x:hidden;white-space:nowrap;text-transform:uppercase}.listItem.svelte-55e05t{cursor:default;height:40px;line-height:40px;padding:0 20px;text-overflow:ellipsis;overflow-x:hidden;white-space:nowrap}.listItem.hover.svelte-55e05t{background:#e7f2ff}.listItem.svelte-55e05t:active{background:#b9daff}.listItem.svelte-55e05t:first-child{border-radius:4px 4px 0 0}.listItem.active.svelte-55e05t{background:#007aff;color:#fff}.listItem.disabled.svelte-55e05t{color:#C1C6CC}.empty.svelte-55e05t{text-align:center;padding:20px 0;color:#78848F}";
 		append(document.head, style);
 	}
 
@@ -24707,7 +24718,7 @@
 	function mouseover_handler(event) {
 		const { component, ctx } = this._svelte;
 
-		component.handleHover(ctx.i);
+		component.handleHover(ctx.item, ctx.i);
 	}
 
 	function get_each_context(ctx, list, i) {
@@ -24746,7 +24757,7 @@
 				for (var i = 0; i < each_blocks.length; i += 1) {
 					each_blocks[i].c();
 				}
-				div.className = "listContainer svelte-1h82xdc";
+				div.className = "listContainer svelte-55e05t";
 			},
 
 			m(target, anchor) {
@@ -24764,7 +24775,7 @@
 			},
 
 			p(changed, ctx) {
-				if (changed.hoverItemIndex || changed.items || changed.selectedItem || changed.Item || changed.getOptionLabel) {
+				if (changed.hoverItemIndex || changed.items || changed.selectedItem || changed.isOptionDisabled || changed.Item || changed.getOptionLabel) {
 					each_value = ctx.items;
 
 					for (var i = 0; i < each_value.length; i += 1) {
@@ -24821,7 +24832,7 @@
 			c() {
 				div = createElement("div");
 				div.textContent = "No options";
-				div.className = "empty svelte-1h82xdc";
+				div.className = "empty svelte-55e05t";
 			},
 
 			m(target, anchor) {
@@ -24844,7 +24855,7 @@
 			c() {
 				div = createElement("div");
 				text = createText(text_value);
-				div.className = "listGroupTitle svelte-1h82xdc";
+				div.className = "listGroupTitle svelte-55e05t";
 			},
 
 			m(target, anchor) {
@@ -24901,7 +24912,7 @@
 
 				addListener(div, "mouseover", mouseover_handler);
 				addListener(div, "click", click_handler);
-				div.className = div_class_value = "listItem " + itemClasses(ctx.hoverItemIndex, ctx.item, ctx.i, ctx.items, ctx.selectedItem) + " svelte-1h82xdc";
+				div.className = div_class_value = "listItem " + itemClasses(ctx.hoverItemIndex, ctx.item, ctx.i, ctx.items, ctx.selectedItem, ctx.isOptionDisabled) + " svelte-55e05t";
 			},
 
 			m(target, anchor) {
@@ -24954,7 +24965,7 @@
 				}
 
 				div._svelte.ctx = ctx;
-				if ((changed.hoverItemIndex || changed.items || changed.selectedItem) && div_class_value !== (div_class_value = "listItem " + itemClasses(ctx.hoverItemIndex, ctx.item, ctx.i, ctx.items, ctx.selectedItem) + " svelte-1h82xdc")) {
+				if ((changed.hoverItemIndex || changed.items || changed.selectedItem || changed.isOptionDisabled) && div_class_value !== (div_class_value = "listItem " + itemClasses(ctx.hoverItemIndex, ctx.item, ctx.i, ctx.items, ctx.selectedItem, ctx.isOptionDisabled) + " svelte-55e05t")) {
 					div.className = div_class_value;
 				}
 			},
@@ -24980,7 +24991,7 @@
 		this._intro = true;
 		this._handlers.update = [onupdate];
 
-		if (!document.getElementById("svelte-1h82xdc-style")) add_css();
+		if (!document.getElementById("svelte-55e05t-style")) add_css();
 
 		this._fragment = create_main_fragment$1(this, this._state);
 
@@ -25105,7 +25116,8 @@
 	    getSelectionLabel: (option) => option.label,
 	    placeholder: 'Select...',
 	    groupBy: undefined,
-	    groupFilter: (groups) => groups
+	    groupFilter: (groups) => groups,
+	    isOptionDisabled: () => false
 	  }
 	}
 	var methods$1 = {
@@ -25186,8 +25198,8 @@
 	    this.getPosition();
 	    this.refs.container.appendChild(target);
 
-	    const {Item: Item$$1, getOptionLabel} = this.get();
-	    const data = {Item: Item$$1};
+	    const {Item: Item$$1, getOptionLabel, isOptionDisabled} = this.get();
+	    const data = {Item: Item$$1,isOptionDisabled};
 
 	    if (getOptionLabel) {
 	      data.getOptionLabel = getOptionLabel;
@@ -27713,7 +27725,10 @@
 	  const select = new Select({
 	    target,
 	    data: {
-	      items
+	      items: itemsWithGroup,
+	      isOptionDisabled: (option) => {
+	        return option.group === 'Sweet';
+	      }
 	    }
 	  });
 	});
